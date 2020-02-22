@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using WeatherApp.Model;
+using WeatherApp.ViewModel.Commands;
 using WeatherApp.ViewModel.Helpers;
 
 namespace WeatherApp.ViewModel
 {
     public class WeatherVM : INotifyPropertyChanged
     {
+
         private string query{ get; set; }
 
         public string Query
@@ -22,6 +25,8 @@ namespace WeatherApp.ViewModel
                 OnPropertyChanged("Query");
             }
         }
+
+        public ObservableCollection<City> Cities { get; set; }
 
         private CurrentConditions currentConditions;
         public CurrentConditions CurrentConditions
@@ -35,23 +40,17 @@ namespace WeatherApp.ViewModel
         }
         
         private City selectedCity;
-
         public City SelectedCity
         {
             get { return selectedCity; }
             set {
                 selectedCity = value;
                 OnPropertyChanged("SelectedCity");
+                GetCurrentConditions();
             }
         }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        private void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
+        
+        public SearchCommand SearchCommand{ get; set; }
         public WeatherVM()
         {
             if(DesignerProperties.GetIsInDesignMode(new System.Windows.DependencyObject()))
@@ -68,16 +67,39 @@ namespace WeatherApp.ViewModel
                     {
                         Metric = new Units
                         {
-                            Value = 21
+                            Value = "21"
                         }
                     }
                 };
             }
+
+            SearchCommand = new SearchCommand(this);
+            Cities = new ObservableCollection<City>();
         }
 
+        private async void GetCurrentConditions()
+        {
+            Query = string.Empty;
+            Cities.Clear();
+
+            CurrentConditions = await AccuWeatherHelper.GetCurrentCondition(SelectedCity.Key);
+        }
         public async void MakeQuery()
         {
             var cities = await AccuWeatherHelper.GetCities(Query);
+
+            Cities.Clear();
+
+            foreach (var c in cities)
+            {
+                Cities.Add(c);
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
